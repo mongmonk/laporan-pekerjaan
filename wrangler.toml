@@ -1,0 +1,10 @@
+name = "laporan-pekerjaan"
+compatibility_date = "2024-06-01"
+pages_build_output_dir = "./dist"
+
+[[kv_namespaces]]
+binding = "REPORTS_KV"
+id = "d7867d7606aa48dc8c43558782366019"
+
+[vars]
+AUTH_PASSWORD = "Bismillah"
