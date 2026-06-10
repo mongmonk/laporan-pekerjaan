@@ -1,0 +1,10 @@
+name = "daily-report-app"
+main = "functions/_worker.js"
+compatibility_date = "2024-06-01"
+
+[site]
+bucket = "./dist"
+
+[vars]
+AUTH_PASSWORD=*** = "REPORTS_KV"
+id = "70567f455c19450a9cb2041cf5b187bb"
