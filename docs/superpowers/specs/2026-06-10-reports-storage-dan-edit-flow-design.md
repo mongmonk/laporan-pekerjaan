@@ -25,6 +25,8 @@ punya dua masalah yang akan ditangani bersama karena keduanya menyentuh fitur la
 - Migrasikan 6 laporan lama secara **otomatis sekali jalan**, tanpa aksi manual.
 - Ganti form tambah/edit menjadi **modal/popup** sehingga halaman tidak bergeser dan
   fokus penuh ke form.
+- Tambah field opsional **URL** dan **Git URL** pada laporan (form, tampilan kartu, export).
+- Tambah **filter tanggal** (Hari / Bulan / Rentang) di samping filter Status.
 
 ## Non-Tujuan (YAGNI)
 
@@ -48,6 +50,8 @@ Sesudah: **satu key** `reports:index` berisi array JSON seluruh laporan:
     "id": "report:1781083910210",
     "title": "...",
     "description": "...",
+    "url": "https://... (opsional)",
+    "git_url": "https://... (opsional)",
     "status": "pending | progress | done",
     "date": "YYYY-MM-DD",
     "created_at": "ISO-8601",
@@ -78,7 +82,9 @@ Semua endpoint laporan melalui dua helper:
 | `PUT /api/reports/:id` | `arr = getIndex()`; cari index by id; jika tak ada → 404; ganti field; set `updated_at`; `putIndex`; balik report |
 | `DELETE /api/reports/:id` | `arr = getIndex()`; filter buang by id; `putIndex`; balik `{success:true}` |
 
-Auth & CORS tidak berubah.
+Auth & CORS tidak berubah. POST & PUT menerima dan menyimpan field opsional baru
+`url` dan `git_url` (default string kosong bila tidak diisi). Laporan lama hasil
+migrasi yang belum punya field ini diperlakukan sebagai kosong.
 
 ### Migrasi otomatis (sekali jalan)
 
@@ -122,9 +128,15 @@ konsisten dibanding `list()` sebelumnya. Last-write-wins diterima (single-user).
 1. Tanggal (input date)
 2. Judul Pekerjaan (input teks)
 3. Deskripsi (textarea)
-4. Status — **3 tombol pilih (segmented)**: ⏳ Pending / 🔄 In Progress / ✅ Done,
+4. URL Aplikasi (input, opsional, ikon 🔗)
+5. Git URL (input, opsional, ikon 🐙)
+6. Status — **3 tombol pilih (segmented)**: ⏳ Pending / 🔄 In Progress / ✅ Done,
    menggantikan dropdown. Tombol aktif diberi warna sesuai status.
-5. Aksi: **Simpan/Tambah** (primary) + **Batal** (ghost).
+7. Aksi: **Simpan/Tambah** (primary) + **Batal** (ghost).
+
+Di **kartu daftar**, `url` dan `git_url` (bila terisi) tampil sebagai link pendek
+(hanya domain/host) yang bisa diklik dan membuka tab baru (`target="_blank"`,
+`rel="noopener"`). Baris link tidak muncul bila field kosong.
 
 ### Hapus
 
@@ -150,6 +162,41 @@ yang sudah ada (tetap minimal; tidak membuat modal konfirmasi terpisah).
 
 ---
 
+---
+
+## Bagian 3 — Filter tanggal
+
+Frontend-only (tidak ada perubahan backend); memfilter array laporan yang sudah dimuat.
+
+### Kontrol
+
+Di bar filter, di samping filter **Status** yang sudah ada, tambahkan pemilih
+**mode tanggal** berupa tombol segmented: **Semua / Hari / Bulan / Rentang**.
+Input tanggal menyesuaikan mode:
+
+| Mode | Input | Logika filter |
+|---|---|---|
+| Semua | — | semua laporan (tanpa filter tanggal) |
+| Hari | satu `input[type=date]` | `report.date === tanggalDipilih` |
+| Bulan | satu `input[type=month]` | bulan & tahun `report.date` sama dengan dipilih |
+| Rentang | dua `input[type=date]` (dari–sampai) | `dari <= report.date <= sampai` |
+
+State filter: `dateMode` ('all' default), `filterDay`, `filterMonth`, `filterFrom`,
+`filterTo`. Perbandingan dilakukan pada string `date` (`YYYY-MM-DD`) — aman dibandingkan
+secara leksikografis untuk rentang; untuk bulan, bandingkan prefiks `YYYY-MM`.
+
+### Penggabungan
+
+Filter Status dan filter tanggal berlaku **bersamaan (AND)**. Daftar `filtered`
+(yang sudah dipakai untuk render & export) dihitung dari kedua filter, lalu disortir
+tanggal terbaru seperti sekarang. Export CSV/PDF tetap mengikuti `filtered` (mengekspor
+apa yang sedang tampil).
+
+## Bagian 4 — Export
+
+`exportCSV` dan `exportPDF` ditambah dua kolom: **URL** dan **Git URL**, setelah kolom
+Deskripsi. CSV tetap meng-escape tanda kutip. Tidak ada perubahan perilaku lain.
+
 ## Testing / Verifikasi
 
 Backend (via curl ke deployment atau lokal):
@@ -163,6 +210,11 @@ Frontend (manual di app):
 - Klik Edit di laporan paling bawah → modal terbuka di tengah, halaman tidak lompat.
 - Tambah, edit, batal, Esc, klik scrim — semua menutup modal dengan benar.
 - Segmented status memilih nilai yang benar dan tersimpan.
+- Isi URL & Git URL → tersimpan, tampil sebagai link pendek di kartu, klik buka tab baru;
+  field kosong → baris link tidak muncul.
+- Filter tanggal: mode Hari/Bulan/Rentang menyaring benar; digabung dengan filter Status;
+  mode Semua menampilkan semua.
+- Export CSV/PDF berisi kolom URL & Git URL dan mengikuti hasil filter aktif.
 
 ## Risiko & Mitigasi
 
