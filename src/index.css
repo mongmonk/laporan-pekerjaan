@@ -319,7 +319,25 @@ body {
   display: block; font-size: 11px; text-transform: uppercase; letter-spacing: 0.6px;
   color: #7c8aa5; margin-bottom: 5px;
 }
-.modal .field input, .modal .field textarea { width: 100%; }
+.modal .field input,
+.modal .field textarea {
+  width: 100%;
+  padding: 10px 12px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text);
+  font-size: 0.9rem;
+  font-family: inherit;
+  color-scheme: dark;
+}
+.modal .field textarea { min-height: 80px; resize: vertical; }
+.modal .field input:focus,
+.modal .field textarea:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+}
 .modal-actions { display: flex; gap: 10px; margin-top: 18px; }
 .modal-actions .btn-primary { flex: 1; }
 
@@ -346,3 +364,19 @@ body {
 .date-filter .seg-btn:last-child { border-right: none; }
 .date-filter .seg-btn.on { background: #3b82f6; color: #fff; }
 .date-filter .dash { color: #64748b; }
+.date-filter input {
+  padding: 8px 10px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text);
+  font-size: 0.85rem;
+  font-family: inherit;
+  color-scheme: dark;
+}
+.date-filter input:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+}
+.filter-bar select { color-scheme: dark; }
