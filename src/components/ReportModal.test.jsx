@@ -5,7 +5,7 @@ import ReportModal from './ReportModal.jsx'
 describe('ReportModal', () => {
   it('shows "Tambah" title in create mode', () => {
     render(<ReportModal report={null} onSave={() => {}} onClose={() => {}} />)
-    expect(screen.getByText(/Tambah Laporan/i)).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: /Tambah Laporan/i })).toBeInTheDocument()
   })
 
   it('prefills fields in edit mode', () => {

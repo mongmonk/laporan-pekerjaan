@@ -83,7 +83,7 @@ export default function ReportModal({ report, onSave, onClose }) {
             </div>
           </div>
           <div className="modal-actions">
-            <button type="submit" aria-label={isEdit ? 'Simpan Perubahan' : 'Tambah Laporan'} className="btn btn-primary">{isEdit ? 'Simpan Perubahan' : 'Simpan'}</button>
+            <button type="submit" className="btn btn-primary">{isEdit ? 'Simpan Perubahan' : 'Tambah Laporan'}</button>
             <button type="button" className="btn btn-ghost" onClick={onClose}>Batal</button>
           </div>
         </form>
