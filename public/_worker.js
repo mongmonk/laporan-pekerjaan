@@ -1,5 +1,17 @@
 export default {
   async fetch(request, env) {
+    try {
+      return await handle(request, env)
+    } catch (err) {
+      return new Response(
+        JSON.stringify({ error: 'Worker exception', message: String(err && err.message || err) }),
+        { status: 500, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } }
+      )
+    }
+  },
+}
+
+async function handle(request, env) {
     const url = new URL(request.url)
     const path = url.pathname
 
@@ -12,6 +24,15 @@ export default {
 
     if (request.method === 'OPTIONS') {
       return new Response(null, { headers: cors })
+    }
+
+    // Diagnostic: which bindings reached the worker? (no secret values)
+    if (path === '/api/debug') {
+      return json({
+        bindings: Object.keys(env || {}),
+        hasKV: typeof (env && env.REPORTS_KV) !== 'undefined',
+        hasAuthPassword: typeof (env && env.AUTH_PASSWORD) !== 'undefined',
+      }, cors)
     }
 
     // Auth endpoint
@@ -88,7 +109,6 @@ export default {
 
     // Serve static files (SPA fallback)
     return env.ASSETS.fetch(request)
-  },
 }
 
 function json(data, cors = {}, status = 200) {
