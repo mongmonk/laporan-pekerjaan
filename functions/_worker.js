@@ -17,7 +17,7 @@ export default {
     // Auth endpoint
     if (path === '/api/auth' && request.method === 'POST') {
       const body = await request.json()
-      if (body.password === env.AUTH_PASSWORD) {
+      if (body.password === "Bismillah") {
         return json({ token: 'authenticated' }, cors)
       }
       return json({ error: 'Password salah' }, cors, 401)
