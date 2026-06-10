@@ -26,15 +26,6 @@ async function handle(request, env) {
       return new Response(null, { headers: cors })
     }
 
-    // Diagnostic: which bindings reached the worker? (no secret values)
-    if (path === '/api/debug') {
-      return json({
-        bindings: Object.keys(env || {}),
-        hasKV: typeof (env && env.REPORTS_KV) !== 'undefined',
-        hasAuthPassword: typeof (env && env.AUTH_PASSWORD) !== 'undefined',
-      }, cors)
-    }
-
     // Auth endpoint
     if (path === '/api/auth' && request.method === 'POST') {
       const body = await request.json()
