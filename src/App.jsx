@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react'
-import { format } from 'date-fns'
-import { id } from 'date-fns/locale'
+import ReportModal from './components/ReportModal.jsx'
+import ReportItem from './components/ReportItem.jsx'
+import DateFilter from './components/DateFilter.jsx'
+import { filterReports, currentMonthRange } from './lib/reports.js'
 
 const API_BASE = '/api'
 const AUTH_KEY = 'daily_report_auth'
@@ -78,103 +80,18 @@ function LoginScreen({ onLogin }) {
   )
 }
 
-// ---- Report Form ----
-function ReportForm({ editing, onSave, onCancel }) {
-  const [title, setTitle] = useState(editing?.title || '')
-  const [desc, setDesc] = useState(editing?.description || '')
-  const [status, setStatus] = useState(editing?.status || 'pending')
-  const [date, setDate] = useState(editing?.date || format(new Date(), 'yyyy-MM-dd'))
-
-  const handleSubmit = (e) => {
-    e.preventDefault()
-    if (!title.trim()) return
-    onSave({ title: title.trim(), description: desc.trim(), status, date, id: editing?.id })
-  }
-
-  return (
-    <div className="card">
-      <h3 style={{ marginBottom: 16 }}>{editing ? '✏️ Edit Laporan' : '➕ Tambah Laporan'}</h3>
-      <form onSubmit={handleSubmit}>
-        <div className="form-group">
-          <label>Tanggal</label>
-          <input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
-        </div>
-        <div className="form-group">
-          <label>Judul Pekerjaan</label>
-          <input
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            placeholder="Contoh: Meeting dengan klien"
-          />
-        </div>
-        <div className="form-group">
-          <label>Deskripsi</label>
-          <textarea
-            value={desc}
-            onChange={(e) => setDesc(e.target.value)}
-            placeholder="Detail pekerjaan yang dilakukan..."
-          />
-        </div>
-        <div className="form-group">
-          <label>Status</label>
-          <select value={status} onChange={(e) => setStatus(e.target.value)}>
-            <option value="pending">⏳ Pending</option>
-            <option value="progress">🔄 In Progress</option>
-            <option value="done">✅ Done</option>
-          </select>
-        </div>
-        <div style={{ display: 'flex', gap: 8 }}>
-          <button className="btn btn-primary" type="submit">
-            {editing ? 'Simpan Perubahan' : 'Tambah Laporan'}
-          </button>
-          {editing && (
-            <button className="btn btn-ghost" type="button" onClick={onCancel}>
-              Batal
-            </button>
-          )}
-        </div>
-      </form>
-    </div>
-  )
-}
-
-// ---- Report Item ----
-function ReportItem({ report, onEdit, onDelete }) {
-  const statusClass = `status-${report.status}`
-  const statusLabel = { pending: 'Pending', progress: 'In Progress', done: 'Done' }[report.status]
-
-  return (
-    <div className="report-item">
-      <div className="report-content">
-        <div className="report-date">
-          {format(new Date(report.date), 'EEEE, dd MMMM yyyy', { locale: id })}
-        </div>
-        <div className="report-title">{report.title}</div>
-        {report.description && <div className="report-desc">{report.description}</div>}
-        <span className={`status-badge ${statusClass}`}>{statusLabel}</span>
-      </div>
-      <div className="report-actions">
-        <button className="btn btn-warning" onClick={() => onEdit(report)}>Edit</button>
-        <button className="btn btn-danger" onClick={() => onDelete(report.id)}>Hapus</button>
-      </div>
-    </div>
-  )
-}
-
 // ---- Export helpers ----
 function exportCSV(reports) {
-  const header = 'Tanggal,Judul,Deskripsi,Status\n'
+  const header = 'Tanggal,Judul,Deskripsi,URL,Git URL,Status\n'
+  const esc = (s) => `"${String(s || '').replace(/"/g, '""')}"`
   const rows = reports
-    .map(
-      (r) =>
-        `"${r.date}","${r.title.replace(/"/g, '""')}","${(r.description || '').replace(/"/g, '""')}","${r.status}"`
-    )
+    .map((r) => [r.date, r.title, r.description, r.url, r.git_url, r.status].map(esc).join(','))
     .join('\n')
   const blob = new Blob([header + rows], { type: 'text/csv;charset=utf-8;' })
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')
   a.href = url
-  a.download = `laporan-harian-${format(new Date(), 'yyyy-MM-dd')}.csv`
+  a.download = `laporan-harian-${new Date().toISOString().split('T')[0]}.csv`
   a.click()
   URL.revokeObjectURL(url)
 }
@@ -188,6 +105,8 @@ function exportPDF(reports) {
         <td>${r.date}</td>
         <td>${r.title}</td>
         <td>${r.description || '-'}</td>
+        <td>${r.url || '-'}</td>
+        <td>${r.git_url || '-'}</td>
         <td>${r.status}</td>
       </tr>`
     )
@@ -202,8 +121,8 @@ function exportPDF(reports) {
       th { background: #f0f0f0; }
     </style></head><body>
     <h1>Laporan Harian</h1>
-    <p>Tanggal Export: ${format(new Date(), 'dd MMMM yyyy HH:mm', { locale: id })}</p>
-    <table><thead><tr><th>Tanggal</th><th>Judul</th><th>Deskripsi</th><th>Status</th></tr></thead>
+    <p>Tanggal Export: ${new Date().toLocaleString('id-ID')}</p>
+    <table><thead><tr><th>Tanggal</th><th>Judul</th><th>Deskripsi</th><th>URL</th><th>Git URL</th><th>Status</th></tr></thead>
     <tbody>${rows}</tbody></table>
     <script>window.print();</script>
     </body></html>
@@ -214,9 +133,10 @@ function exportPDF(reports) {
 export default function App() {
   const [authed, setAuthed] = useState(!!sessionStorage.getItem(AUTH_KEY))
   const [reports, setReports] = useState([])
+  const [modalOpen, setModalOpen] = useState(false)
   const [editing, setEditing] = useState(null)
-  const [showForm, setShowForm] = useState(false)
-  const [filter, setFilter] = useState('all')
+  const [statusFilter, setStatusFilter] = useState('all')
+  const [dateFilter, setDateFilter] = useState({ dateMode: 'range', day: '', month: '', ...currentMonthRange() })
   const [loading, setLoading] = useState(true)
 
   const loadReports = useCallback(async () => {
@@ -230,20 +150,23 @@ export default function App() {
     if (authed) loadReports()
   }, [authed, loadReports])
 
+  const openAdd = () => { setEditing(null); setModalOpen(true) }
+  const openEdit = (report) => { setEditing(report); setModalOpen(true) }
+  const closeModal = () => { setModalOpen(false); setEditing(null) }
+
   const handleSave = async (report) => {
     if (report.id) {
       await api(`/reports/${report.id}`, { method: 'PUT', body: JSON.stringify(report) })
     } else {
       await api('/reports', { method: 'POST', body: JSON.stringify(report) })
     }
-    setShowForm(false)
-    setEditing(null)
+    closeModal()
     loadReports()
   }
 
-  const handleDelete = async (id) => {
+  const handleDelete = async (reportId) => {
     if (!window.confirm('Yakin hapus laporan ini?')) return
-    await api(`/reports/${id}`, { method: 'DELETE' })
+    await api(`/reports/${reportId}`, { method: 'DELETE' })
     loadReports()
   }
 
@@ -254,7 +177,8 @@ export default function App() {
 
   if (!authed) return <LoginScreen onLogin={() => setAuthed(true)} />
 
-  const filtered = reports.filter((r) => filter === 'all' || r.status === filter)
+  const filtered = filterReports(reports, { status: statusFilter, ...dateFilter })
+  const sorted = [...filtered].sort((a, b) => new Date(b.date) - new Date(a.date))
   const stats = {
     total: reports.length,
     done: reports.filter((r) => r.status === 'done').length,
@@ -286,44 +210,41 @@ export default function App() {
       </div>
 
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-        <button className="btn btn-primary" onClick={() => { setEditing(null); setShowForm(!showForm); }}>
-          {showForm ? 'Tutup' : '+ Tambah Laporan'}
-        </button>
+        <button className="btn btn-primary" onClick={openAdd}>+ Tambah Laporan</button>
         <div className="export-btns">
-          <button className="btn btn-ghost" onClick={() => exportCSV(filtered)}>📄 Export CSV</button>
-          <button className="btn btn-ghost" onClick={() => exportPDF(filtered)}>🖨️ Export PDF</button>
+          <button className="btn btn-ghost" onClick={() => exportCSV(sorted)}>📄 Export CSV</button>
+          <button className="btn btn-ghost" onClick={() => exportPDF(sorted)}>🖨️ Export PDF</button>
         </div>
       </div>
 
-      {showForm && (
-        <ReportForm editing={editing} onSave={handleSave} onCancel={() => { setShowForm(false); setEditing(null); }} />
-      )}
-
       <div className="filter-bar">
-        <select value={filter} onChange={(e) => setFilter(e.target.value)}>
+        <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
           <option value="all">Semua Status</option>
           <option value="pending">⏳ Pending</option>
           <option value="progress">🔄 In Progress</option>
           <option value="done">✅ Done</option>
         </select>
+        <DateFilter value={dateFilter} onChange={setDateFilter} />
       </div>
 
       <div className="report-list">
         {loading ? (
           <div className="empty-state">Memuat...</div>
-        ) : filtered.length === 0 ? (
+        ) : sorted.length === 0 ? (
           <div className="empty-state">
             <div className="icon">📝</div>
             <p>Belum ada laporan. Tambahkan yang pertama!</p>
           </div>
         ) : (
-          filtered
-            .sort((a, b) => new Date(b.date) - new Date(a.date))
-            .map((r) => (
-              <ReportItem key={r.id} report={r} onEdit={(r) => { setEditing(r); setShowForm(true); }} onDelete={handleDelete} />
-            ))
+          sorted.map((r) => (
+            <ReportItem key={r.id} report={r} onEdit={openEdit} onDelete={handleDelete} />
+          ))
         )}
       </div>
+
+      {modalOpen && (
+        <ReportModal report={editing} onSave={handleSave} onClose={closeModal} />
+      )}
     </div>
   )
 }
