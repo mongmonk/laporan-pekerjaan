@@ -181,9 +181,13 @@ Input tanggal menyesuaikan mode:
 | Bulan | satu `input[type=month]` | bulan & tahun `report.date` sama dengan dipilih |
 | Rentang | dua `input[type=date]` (dari–sampai) | `dari <= report.date <= sampai` |
 
-State filter: `dateMode` ('all' default), `filterDay`, `filterMonth`, `filterFrom`,
-`filterTo`. Perbandingan dilakukan pada string `date` (`YYYY-MM-DD`) — aman dibandingkan
-secara leksikografis untuk rentang; untuk bulan, bandingkan prefiks `YYYY-MM`.
+State filter `dateFilter`: `{ dateMode, day, month, from, to }`. Perbandingan dilakukan
+pada string `date` (`YYYY-MM-DD`) — aman dibandingkan secara leksikografis untuk rentang;
+untuk bulan, bandingkan prefiks `YYYY-MM`.
+
+**Default saat app dibuka:** `dateMode: 'range'` dengan `from` = tanggal 1 dan `to` =
+tanggal terakhir **bulan berjalan** (mis. `2026-06-01` … `2026-06-30`). Jadi tampilan
+awal menampilkan laporan bulan ini. Pengguna bisa ganti ke Semua/Hari/Bulan/Rentang lain.
 
 ### Penggabungan
 

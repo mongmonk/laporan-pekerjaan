@@ -547,7 +547,7 @@ git commit -m "test(worker): end-to-end fetch handler (auth, CRUD, migration)"
 Create `src/lib/reports.test.js`:
 ```js
 import { describe, it, expect } from 'vitest'
-import { shortHost, filterReports } from './reports.js'
+import { shortHost, filterReports, currentMonthRange } from './reports.js'
 
 describe('shortHost', () => {
   it('strips protocol and www, drops trailing slash', () => {
@@ -592,6 +592,18 @@ describe('filterReports', () => {
     expect(filterReports(reports, { dateMode: 'day', day: '' })).toHaveLength(3)
   })
 })
+
+describe('currentMonthRange', () => {
+  it('returns first and last day of the given month', () => {
+    expect(currentMonthRange(new Date(2026, 5, 15))).toEqual({ from: '2026-06-01', to: '2026-06-30' })
+  })
+  it('handles February correctly', () => {
+    expect(currentMonthRange(new Date(2026, 1, 3))).toEqual({ from: '2026-02-01', to: '2026-02-28' })
+  })
+  it('pads single-digit months/days', () => {
+    expect(currentMonthRange(new Date(2026, 0, 1))).toEqual({ from: '2026-01-01', to: '2026-01-31' })
+  })
+})
 ```
 
 - [ ] **Step 2: Run to verify failure**
@@ -626,6 +638,14 @@ export function filterReports(reports, criteria) {
     }
     return true
   })
+}
+
+export function currentMonthRange(now = new Date()) {
+  const y = now.getFullYear()
+  const m = now.getMonth() // 0-based
+  const pad = (n) => String(n).padStart(2, '0')
+  const lastDay = new Date(y, m + 1, 0).getDate()
+  return { from: `${y}-${pad(m + 1)}-01`, to: `${y}-${pad(m + 1)}-${pad(lastDay)}` }
 }
 ```
 
@@ -1066,7 +1086,7 @@ import React, { useState, useEffect, useCallback } from 'react'
 import ReportModal from './components/ReportModal.jsx'
 import ReportItem from './components/ReportItem.jsx'
 import DateFilter from './components/DateFilter.jsx'
-import { filterReports } from './lib/reports.js'
+import { filterReports, currentMonthRange } from './lib/reports.js'
 ```
 Hapus seluruh fungsi `function ReportForm(...) { ... }` dan `function ReportItem(...) { ... }` yang ada di file ini (komponen item kini diimpor; form digantikan modal). Pertahankan `api`, `login`, `LoginScreen`.
 
@@ -1124,7 +1144,7 @@ export default function App() {
   const [modalOpen, setModalOpen] = useState(false)
   const [editing, setEditing] = useState(null)
   const [statusFilter, setStatusFilter] = useState('all')
-  const [dateFilter, setDateFilter] = useState({ dateMode: 'all', day: '', month: '', from: '', to: '' })
+  const [dateFilter, setDateFilter] = useState({ dateMode: 'range', day: '', month: '', ...currentMonthRange() })
   const [loading, setLoading] = useState(true)
 
   const loadReports = useCallback(async () => {
@@ -1365,6 +1385,8 @@ Tunggu rebuild (~1-2 menit), lalu di `https://laporan-pekerjaan.pages.dev`:
 - **Migrasi:** 6 laporan lama tetap muncul (data terbawa ke `reports:index`).
 - Klik **Edit** di laporan paling bawah → modal terbuka di tengah, halaman tidak lompat; ubah judul → Simpan → berubah.
 - **Tambah** laporan baru dengan URL & Git URL → muncul; link tampil sebagai teks pendek, klik buka tab baru.
+- **Default filter:** saat app dibuka, mode Rentang sudah terisi tanggal 1–akhir bulan ini
+  (hanya laporan bulan berjalan yang tampil).
 - **Filter:** mode Hari/Bulan/Rentang menyaring benar; digabung dengan filter Status.
 - **Export CSV & PDF** berisi kolom URL & Git URL dan mengikuti filter aktif.
 - Tutup modal via ✕, Batal, scrim, Esc — semua bekerja.
